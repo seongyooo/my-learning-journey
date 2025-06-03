@@ -35,4 +35,4 @@
 
 ## 📊 My GitHub Stats
 
-[![My GitHub stats](https://github-readme-stats.vercel.app/api?username=[YOUR_USERNAME]&show_icons=true&theme=radical)](https://github.com/[YOUR_USERNAME])
+[![My GitHub stats](https://github.com/seongyooo/my-learning-journey/blob/main/README.md)
