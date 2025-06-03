@@ -22,7 +22,7 @@
 
 ## 🗺️ Contents
 
-* [**01_courses/**](#01_courses)
+* [**01_courses/**](1_courses)
     * [Operating Systems](#operating-systems)
     * [Algorithm Analysis](#algorithm-analysis)
 * [**02_projects/**](#02_projects)
