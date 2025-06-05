@@ -37,6 +37,47 @@ count 변수: 현재 count는 전체 라인 수를 세고 있어서 Reader#와 W
 
 printf 오타: "Wirter"가 아니라 "Writer"입니다. 😉
 
+
+
+## 🚀 다음 단계: 2단계 - 스레드 생성 및 기본 동작 구현 (재확인)
+이전 안내에서 말씀드렸듯이, 2단계의 주요 목표는 다음과 같습니다:
+
+파일에서 읽은 정보를 바탕으로 실제 POSIX 스레드(pthread)를 생성합니다.
+각 스레드는 자신의 ID와 처리 시간 등의 정보를 인자로 받아야 합니다. 이를 위해 스레드 인자 구조체를 정의하고 사용합니다.
+생성된 스레드는 간단한 메시지(예: "Reader #X created", "Writer #X working", "Reader #X finished")를 (아직 타임스탬프 없이) 콘솔에 출력합니다.
+스레드는 전달받은 처리 시간만큼 usleep을 사용하여 "작업하는 척"합니다.
+main 함수는 생성된 모든 스레드가 작업을 마칠 때까지 pthread_join을 사용하여 기다립니다.
+핵심적으로 추가/수정할 부분 (다시 한번 강조):
+
+스레드 함수 정의:
+void *reader_function(void *arg)
+void *writer_function(void *arg)
+스레드 인자 구조체 정의:
+최소한 스레드 ID (int id;)와 처리 시간 (int processing_time;)을 포함해야 합니다.
+예시:
+C
+
+typedef struct {
+    int id;
+    int processing_time;
+    // 필요하다면 여기에 다른 정보도 추가할 수 있습니다 (예: 스레드 타입 문자 'R' 또는 'W')
+} thread_arg_t;
+main 함수 내 변경 사항:
+pthread_t threads[MAX_THREADS]; 와 같이 스레드 ID를 저장할 배열을 선언합니다. (MAX_THREADS는 적절한 크기로 define 하세요. 과제 요구사항은 최대 100개입니다.)
+while 루프 내에서:
+malloc을 사용하여 thread_arg_t 구조체를 위한 메모리를 동적으로 할당합니다.
+할당된 구조체에 현재 파싱된 정보(ID, 처리 시간 등)를 채웁니다.
+pthread_create() 함수를 호출하여 reader_function 또는 writer_function을 실행하는 새 스레드를 생성하고, 인자로 위에서 채운 구조체의 포인터를 전달합니다. 스레드 생성 성공 여부를 확인하는 것이 좋습니다.
+while 루프가 끝난 후:
+for 루프를 사용하여 생성된 모든 스레드에 대해 pthread_join()을 호출하여 해당 스레드가 종료될 때까지 대기합니다.
+스레드 함수 (reader_function, writer_function) 내 변경 사항:
+함수 시작 부분에서 void *arg로 전달된 인자를 thread_arg_t * 타입으로 캐스팅합니다.
+캐스팅된 구조체에서 ID와 처리 시간을 읽어와 메시지를 출력합니다.
+usleep(args->processing_time * 1000); 형태로 처리 시간만큼 대기합니다. (처리 시간이 밀리초 단위이므로 1000을 곱해 마이크로초로 변환).
+스레드 작업이 끝나면 free(args);를 호출하여 main에서 동적으로 할당했던 인자 구조체 메모리를 해제합니다.
+return NULL; 로 스레드를 종료합니다.
+현재 main 함수에서 printf로 "Read started!", "Write started!" 메시지를 바로 출력하는 부분은 이제 각 스레드 함수 내부에서 "작업 시작" 시점에 출력하도록 옮겨질 것입니다. main 함수에서는 스레드 생성 요청까지만 담당하고, 실제 작업과 관련된 출력은 해당 스레드가 직접 처리하도록 역할을 분리하는 것이죠.
+
 타임스탬프 자리 비워두기: 현재 printf("[] ...")로 타임스탬프 자리를 비워두셨는데, 아주 좋은 시작입니다! 3단계에서 채워 넣을 예정이니 잘 기억해두세요.
 
 fclose(fp);: 파일 사용이 끝나면 닫아주는 것이 좋습니다. while 루프가 끝난 후 fclose(fp);를 추가해 주세요.
