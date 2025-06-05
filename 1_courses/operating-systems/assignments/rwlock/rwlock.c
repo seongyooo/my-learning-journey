@@ -4,8 +4,10 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h> // usleep() 사용하기 위함
+#include <pthread.h>
 
 #define rw_count 100
+#define BUFFER_SIZE 100
 
 // void create_sequence_file();
 // void rwlock_init(rwlock_t *rw);
@@ -13,8 +15,8 @@
 // void rwlock_release_readlock(rwlock_t *rw);
 // void rwlock_acquire_writelock(rwlock_t *rw);
 // void rwlock_release_writelock(rwlock_t *rw);
-// void *reader(void *arg, int processing_time);
-// void *writer(void *arg, int processing_time);
+void *reader(void *arg);
+void *writer(void *arg);
 
 // typedef struct _rwlock_t{
 //     sem_t lock;
@@ -22,13 +24,11 @@
 //     int readers;
 // } rwlock_t;
 
-// typedef struct{
-//     rwlock_t *rw;
-//     int id;
-//     int processing_time;
-//      // struct timeval start_time;
-//     char type; // 'R' for reader, 'W' for writer
-// } thread_args;
+typedef struct{
+    int id;
+    int processing_time;
+
+} thread_args;
 
 
 
@@ -46,18 +46,52 @@ int main(int argc, char *argv[]){
     }
 
     char thread[rw_count];
-    char rw[10];
+    char rw_type[10];
     int processing_time=0;
-    int read_count=0, write_count=0;
+    int read_count=0, write_count=0, total_count=-1;
 
-    while(fgets(thread, rw_count, fp) != NULL){
-        sscanf(thread, "%s %d", rw, &processing_time);
+    pthread_t threads[rw_count];
+
+    while(fgets(thread, BUFFER_SIZE, fp) != NULL){
+        thread_args *ta = malloc(sizeof(thread_args));
+        if(ta == NULL){
+            perror("Error malloc NULL");
+            continue;
+        }
+
+        if(sscanf(thread, "%s %d", rw_type, &processing_time) !=2){
+            perror("Error not two condition");
+            continue;
+        };
         
+        total_count++;
 
-        if(!strcmp(rw, "R")) printf("[] Reader#%d: Read started! (reading %d ms)\n" , ++read_count, processing_time);
-        else if(!strcmp(rw, "W")) printf("[] Writer#%d: Write started! (writing %d ms)\n" , ++write_count, processing_time);
+        if(!strcmp(rw_type, "R")){ 
+            ta->id = ++read_count;
+            ta->processing_time = processing_time;
 
+            if(pthread_create(&thread[total_count], NULL, reader, (void*)ta) != 0){
+                perror("Error: failed create read thread");
+                free(ta);
+                total_count--;
+            }
+        }
+        else if(!strcmp(rw_type, "W")){
+            ta->id = ++write_count;
+            ta->processing_time = processing_time;
+
+            if(pthread_create(&thread[total_count], NULL, writer, (void*)ta) !=0){
+                perror("Error: failed create write thread");
+                free(ta);
+                total_count--;
+            }
+        }
+        
         usleep(100*1000); // 100ms
+    }
+
+    for(int i=0; i<=total_count; i++){
+        pthread_join(thread[i], NULL);
     }
 
     fclose(fp);
@@ -132,26 +166,31 @@ int main(int argc, char *argv[]){
 //     sem_post(&rw->write_lock);
 // }
 
-// void *reader(void *arg, int processing_time){
-//     rwlock_t *rw = (rwlock_t *)arg;
-//     int id = *((int *)arg);
+void *reader(void *arg){
+    thread_args *ta = (thread_args*)arg;
 
+    printf("[] Reader#%d: Created!\n", ta->id); 
+    printf("[] Reader#%d: Read started! (reading %d ms)\n", ta->id, ta->processing_time);
 
-//     rwlock_acquire_readlock(rw);
-//     printf("Reader %d is reading\n", id);
-//     sleep(processing_time);
-//     rwlock_release_readlock(rw);
-// }
+    usleep(ta->processing_time * 1000);
+    printf("[] Reader#%d: Terminated\n", ta->id); 
+    free(ta); 
+    return NULL;
 
-// void *writer(void *arg, int processing_time){
-//     rwlock_t *rw = (rwlock_t *)arg;
-//     int id = *((int *)arg);
+}
 
-//     rwlock_acquire_writelock(rw);
-//     printf("Writer %d is writing\n", id);
-//     sleep(processing_time);
-//     rwlock_release_writelock(rw);
+void *writer(void *arg){
+    thread_args *ta = (thread_args*)arg;
 
-// }
+    printf("[] Writer#%d: Created!\n", ta->id); 
+    printf("[] Writer#%d: Write started! (writing %d ms)\n", ta->id, ta->processing_time);
+
+    usleep(ta->processing_time * 1000);
+    printf("[] Writer#%d: Terminated\n", ta->id); 
+    free(ta); 
+    return NULL;
+ 
+
+}
 
 
