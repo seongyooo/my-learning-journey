@@ -2,13 +2,14 @@
 
 지금부터 현재 코드(초기 rwlock.c)에서 시작해서 과제 요구사항을 만족하는 코드(제시된 rwlock2.c 수준)로 단계별로 발전시켜 나갈 수 있도록, 그리고 더 나아가 전반적인 코딩 실력을 향상시킬 수 있도록 구체적인 로드맵을 제시해 드릴게요.
 
-🚀 단계별 과제 공략 및 실력 향상 로드맵
-🎯 목표: 과제 요구사항 완벽 이해 및 기능 구현 (도움 최소화)
+### 🚀 단계별 과제 공략 및 실력 향상 로드맵
+# 🎯 목표: 과제 요구사항 완벽 이해 및 기능 구현 (도움 최소화)
 핵심은 문제를 작게 나누어 하나씩 정복하고, 각 단계마다 스스로 고민하고 코드를 작성한 뒤, 막히는 부분을 효율적으로 해결하는 방법을 익히는 거예요.
 
-1단계: 기본 틀 잡기 - 프로그램의 입출력과 메인 루프
+## 1단계: 기본 틀 잡기 - 프로그램의 입출력과 메인 루프
 
 목표: 프로그램이 시퀀스 파일을 입력받아 한 줄씩 읽고, 기본적인 정보를 화면에 출력하는 것.
+
 세부 작업:
 명령줄 인자 처리: main 함수에서 argc, argv를 사용해 프로그램 실행 시 입력된 시퀀스 파일명을 가져오세요. 파일명이 없으면 사용법을 안내하고 종료합니다. 
 힌트: if (argc != 2)
@@ -18,6 +19,7 @@
 정보 출력: 파싱한 타입과 시간을 화면에 간단히 출력해 봅니다.
 100ms 지연: 각 줄을 처리한 후 usleep(100000)으로 100ms 동안 프로그램을 잠시 멈춥니다.
 스스로 해보기: rwlock.c에 위 기능들을 직접 구현해 보세요. rwlock2.c의 main 함수 앞부분을 참고하되, 그대로 복사하지 말고 왜 그렇게 작성되었는지 이해하면서 직접 타이핑하는 것이 중요해요.
+
 막힐 때:
 fopen, fgets, sscanf 사용법이 기억나지 않으면 구글에 "c fopen example", "c fgets example" 등으로 검색해서 간단한 예제를 찾아보세요.
 여기까지 완성된 코드를 보고 피드백을 요청해도 좋아요.
@@ -31,6 +33,7 @@ if (fp == NULL) {
     perror("Error opening file"); // 어떤 오류인지 자세히 알려줍니다.
     return 1; // 오류 시 0이 아닌 값을 반환하는 것이 일반적입니다.
 }
+
 thread 버퍼 크기: char thread[rw_count];에서 rw_count가 만약 100이라면, 한 줄이 100자를 넘어가면 버퍼 오버플로우가 발생할 수 있습니다. 파일의 한 줄이 가질 수 있는 최대 길이를 고려해서 충분한 크기로 설정하는 것이 안전합니다. (예: char thread[256];)
 
 count 변수: 현재 count는 전체 라인 수를 세고 있어서 Reader#와 Writer# ID가 섞여서 증가합니다. 과제 요구사항 에서는 리더와 라이터 ID가 각각 독립적으로 증가해요 (Reader#1, Reader#2, ..., Writer#1, Writer#2, ...). 이를 위해서는 리더용 카운터와 라이터용 카운터를 따로 두는 것이 좋습니다.
@@ -62,17 +65,22 @@ typedef struct {
     int processing_time;
     // 필요하다면 여기에 다른 정보도 추가할 수 있습니다 (예: 스레드 타입 문자 'R' 또는 'W')
 } thread_arg_t;
+
 main 함수 내 변경 사항:
 pthread_t threads[MAX_THREADS]; 와 같이 스레드 ID를 저장할 배열을 선언합니다. (MAX_THREADS는 적절한 크기로 define 하세요. 과제 요구사항은 최대 100개입니다.)
+
 while 루프 내에서:
+
 malloc을 사용하여 thread_arg_t 구조체를 위한 메모리를 동적으로 할당합니다.
 할당된 구조체에 현재 파싱된 정보(ID, 처리 시간 등)를 채웁니다.
 pthread_create() 함수를 호출하여 reader_function 또는 writer_function을 실행하는 새 스레드를 생성하고, 인자로 위에서 채운 구조체의 포인터를 전달합니다. 스레드 생성 성공 여부를 확인하는 것이 좋습니다.
+
 while 루프가 끝난 후:
 for 루프를 사용하여 생성된 모든 스레드에 대해 pthread_join()을 호출하여 해당 스레드가 종료될 때까지 대기합니다.
 스레드 함수 (reader_function, writer_function) 내 변경 사항:
 함수 시작 부분에서 void *arg로 전달된 인자를 thread_arg_t * 타입으로 캐스팅합니다.
 캐스팅된 구조체에서 ID와 처리 시간을 읽어와 메시지를 출력합니다.
+
 usleep(args->processing_time * 1000); 형태로 처리 시간만큼 대기합니다. (처리 시간이 밀리초 단위이므로 1000을 곱해 마이크로초로 변환).
 스레드 작업이 끝나면 free(args);를 호출하여 main에서 동적으로 할당했던 인자 구조체 메모리를 해제합니다.
 return NULL; 로 스레드를 종료합니다.
@@ -83,3 +91,39 @@ return NULL; 로 스레드를 종료합니다.
 fclose(fp);: 파일 사용이 끝나면 닫아주는 것이 좋습니다. while 루프가 끝난 후 fclose(fp);를 추가해 주세요.
 
 End of sequence 출력: printf("End of sequence"); 뒤에 줄 바꿈 문자(\n)를 추가하면 출력이 더 깔끔해집니다. printf("End of sequence\n");
+
+
+
+## 🛠️ 코드 피드백 및 수정 방향
+1. 스레드 함수 시그니처 및 인자 전달 (가장 중요!)
+문제점:
+
+reader와 writer 함수의 시그니처가 POSIX 스레드 표준과 맞지 않아요. pthread_create는 void *(*start_routine)(void *) 형태의 함수 포인터를 받습니다. 즉, 스레드 함수는 하나의 void * 타입 인자만 받을 수 있고, 반환 타입도 void *여야 해요.
+현재 코드: void *reader(void *arg, int id, int processing_time);
+올바른 형태: void *reader(void *arg);
+해결 방안:
+
+thread_args 구조체 활용: main에서 reader 또는 writer 스레드를 생성할 때, 필요한 모든 정보(ID, 처리 시간 등)를 thread_args 구조체에 담아서 이 구조체의 포인터를 pthread_create의 네 번째 인자로 넘겨줍니다.
+스레드 함수 내에서 캐스팅: reader 또는 writer 함수 내에서는 전달받은 void *arg를 다시 thread_args * 타입으로 캐스팅해서 사용합니다.
+C
+
+## 🛠️ 현재 코드 검토 및 추가/개선 제안 여러 오류 처리 제안
+pthread_create 인덱스 관리:
+
+현재 pthread_create(&thread[read_count-1], ...)와 pthread_create(&thread[write_count-1], ...) 부분은 threads 배열에 스레드 ID를 저장하려고 하는데, 리더와 라이터가 같은 threads 배열을 사용하므로 인덱스가 겹칠 수 있습니다. 예를 들어 Reader#1이 생성되면 threads[0]에, Writer#1이 생성되면 threads[0]에 덮어쓰게 됩니다.
+개선 제안: 실제로 생성된 총 스레드의 수를 추적하는 total_thread_count 변수를 사용하고, pthread_create(&threads[total_thread_count], ...) 형태로 스레드 ID를 순차적으로 저장한 뒤 total_thread_count를 증가시키는 것이 좋습니다. 이렇게 하면 pthread_join 루프도 total_thread_count만큼만 돌면 됩니다.
+malloc 실패 처리:
+
+thread_args *ta = malloc(sizeof(thread_args)); 이후에 ta가 NULL인지 (메모리 할당 실패) 확인하는 코드가 없네요. 만약 malloc이 실패하면 NULL 포인터에 접근하려다 프로그램이 비정상 종료될 수 있습니다.
+개선 제안: if (ta == NULL) 조건을 추가하여 오류 메시지를 출력하고, 적절히 처리하는 것이 좋습니다 (예: 해당 라인 처리를 건너뛰거나 프로그램 종료).
+sscanf 반환 값 확인:
+
+sscanf(thread, "%s %d", rw, &processing_time);가 항상 성공적으로 2개의 값을 읽어온다고 가정하고 있습니다. 만약 파일의 특정 줄이 "R 300"과 같은 형식이 아니라면 rw나 processing_time에 의도하지 않은 값이 들어갈 수 있습니다.
+개선 제안: if (sscanf(...) != 2)와 같이 반환 값을 확인하여, 기대한 개수만큼 파싱되지 않았을 경우 경고 메시지를 출력하고 해당 라인을 건너뛰는 등의 예외 처리를 추가하는 것이 더 안전합니다.
+rw_count의 용도:
+
+#define rw_count 100이 있고, char thread[rw_count]; (라인 버퍼) 와 pthread_t threads[rw_count]; (스레드 ID 배열)에 사용되고 있습니다. fgets의 버퍼 크기로 사용될 때는 MAX_LINE_LENGTH 같은 이름이 더 적합할 수 있고, 스레드 배열 크기로 사용될 때는 MAX_THREADS 같은 이름이 더 명확할 수 있습니다. 지금은 두 가지 용도로 하나의 상수를 쓰고 있는데, 의미가 다르므로 분리하는 것을 고려해볼 수 있습니다. (필수는 아니지만 가독성 향상에 도움이 됩니다.)
+pthread_join 루프도 for(int i=0; i<rw_count; i++) 대신 실제로 생성된 스레드 수만큼만 도는 것이 정확합니다. (위 1번 개선 제안과 연결됨)
+pthread_create 실패 처리:
+
+pthread_create 함수도 실패할 수 있습니다. 반환 값을 확인하여 0이 아니면 스레드 생성에 실패한 것이므로, 오류 메시지를 출력하고 free(ta)를 호출하여 할당된 메모리를 해제해주는 것이 좋습니다.
